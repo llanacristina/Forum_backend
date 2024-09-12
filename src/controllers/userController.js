@@ -1,28 +1,28 @@
 require('dotenv').config();
-
-const secretKey = process.env.SECRET_KEY;
-
 const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 const User = require(path.resolve(__dirname, '..', 'models', 'userModel'));
 
+const secretKey = process.env.SECRET_KEY;
+
+
 const create = async (req, res) => {
   try {
+    //console.log('Request Body:', req.body); // Adicione este log
     const user = new User(req.body);
 
     await user.register();
     if (user.errors.length > 0) {
-      console.log(
-        'Não foi possível registrar um usuário!'
-      );
+      console.log('Não foi possível registrar um usuário!');
       console.log(user.errors);
       return res.status(500).send('Ocorreu um erro no servidor.');
     }
 
     const token = jwt.sign({
-      id: user._id, nome: user.user.username
+      id: user.user._id,
+      nome: user.user.username
     }, secretKey);
 
     let obj = {
@@ -31,7 +31,7 @@ const create = async (req, res) => {
       username: user.user.username,
       email: user.user.email,
       profileURL: user.user.profileURL,
-      score: user.user.score
+      location: user.user.location
     };
 
     return res.status(200).send(JSON.stringify(obj));
@@ -43,7 +43,6 @@ const create = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    console.log(req.body);
     const user = new User(req.body);
     await user.login();
 
@@ -53,7 +52,8 @@ const login = async (req, res) => {
     }
 
     const token = jwt.sign({
-      id: user._id, nome: user.user.username
+      id: user.user._id,
+      nome: user.user.username
     }, secretKey);
 
     let obj = {
@@ -62,9 +62,8 @@ const login = async (req, res) => {
       username: user.user.username,
       email: user.user.email,
       profileURL: user.user.profileURL,
-      score: user.user.score
+      location: user.user.location
     };
-    console.log(obj);
 
     return res.status(200).send(JSON.stringify(obj));
   } catch (e) {
@@ -94,7 +93,6 @@ const ChangeProfile = async (req, res) => {
 };
 
 const SendProfile = async (req, res) => {
-
   const id = req.params.id;
 
   const imagePath = path.join('public', 'custom-pfp', `${id}.jpg`);
@@ -109,9 +107,9 @@ const destroy = async (req, res) => {
   try {
     const id = req.params.id;
     const user = await User.delete(id);
-    res.status(200).send(`Post deletado com sucesso!\n${user}`);
+    res.status(200).send(`Usuário deletado com sucesso!\n${user}`);
   } catch (error) {
-    res.status(500).send(`Deu erro aqui no deletar post!\n${error}`);
+    res.status(500).send(`Erro ao deletar usuário!\n${error}`);
   }
 };
 

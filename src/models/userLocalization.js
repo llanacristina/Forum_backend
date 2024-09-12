@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const LocalizationSchema = new mongoose.Schema({
-  userID: { type: String, required: true },
+  userID: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   lat: {type: String, required: true},
   lon: { type: String, required: true },
 });
@@ -27,6 +27,18 @@ class Localization {
       this.errors.push(error.message);
     }
   }
+  static async create(body) {
+    try {
+      const localization = new LocalizationModel(body);
+      await localization.save();
+      console.log('Localização salva com sucesso:', localization);
+      return localization;
+    } catch (error) {
+      console.error('Erro ao criar ou salvar a Localização:', error);
+      throw error; // Lança o erro para ser tratado onde for chamado
+    }
+  }
+
 
   static async readByUser(userID) {
     if (typeof userID !== 'string') return;

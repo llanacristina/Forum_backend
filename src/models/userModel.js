@@ -1,13 +1,17 @@
 const mongoose = require('mongoose');
 const bcryptjs = require('bcryptjs');
 const validator = require('validator');
+const Localization = require('../models/userLocalization'); 
 
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true },
   password: { type: String, required: true },
   profileURL: { type: String, default: '/default_2.png' },
-  score: { type: Number, default: 0 }
+  location: {
+      lat: { type: String, required: false },
+      lon: { type: String, required: false }
+  }
 });
 
 const UserModel = mongoose.model('User', UserSchema);
@@ -28,9 +32,7 @@ class User {
     this.cleanUp();
 
     if (!this.body.password) {
-      this.errors.push(
-        'Ah senha provavelmente é undefined'
-      );
+      this.errors.push('A senha provavelmente é undefined');
       return;
     }
 
@@ -47,20 +49,21 @@ class User {
     const hasName = await UserModel.findOne({ username: this.body.username });
     const isEmailValid = validator.isEmail(this.body.email);
 
-    if (!isEmailValid) this.errors.push(
-      'Email inválido!'
-    );
-    if (hasName) this.errors.push(
-      'Nome de usuário indisponível!'
-    );
-    if (user) this.errors.push(
-      'Usuário já cadastrado!'
-    );
+    if (!isEmailValid) this.errors.push('Email inválido!');
+    if (hasName) this.errors.push('Nome de usuário indisponível!');
+    if (user) this.errors.push('Usuário já cadastrado!');
   }
 
   async register() {
+    this.cleanUp();
     this.validate('register');
     if (this.errors.length > 0) return;
+
+  // Adiciona verificação para lat e lon
+  if (typeof this.body.location.lat !== 'string' || typeof this.body.location.lon !== 'string') {
+    this.errors.push('Latitude e Longitude devem ser strings.');
+    return;
+  }
 
     const salt = bcryptjs.genSaltSync();
     this.body.password = bcryptjs.hashSync(this.body.password, salt);
@@ -68,7 +71,12 @@ class User {
     let number = Math.ceil(Math.random() * 3);
     this.body.profileURL = `/default_${number}.png`;
 
-    this.user = await UserModel.create(this.body);
+    try {
+      this.user = await UserModel.create(this.body);
+    } catch (error) {
+      console.error('Erro ao criar usuário:', error);
+      this.errors.push('Erro ao criar usuário.');
+    }
   }
 
   async login() {
@@ -89,7 +97,7 @@ class User {
   }
 
   static async readAll() {
-    return await UserModel.find().sort({ score: -1, name: 1 });
+    return await UserModel.find().sort({ 'location.lat': -1, username: 1 });
   }
 
   static async readById(id) {
@@ -105,17 +113,25 @@ class User {
     console.log(body);
 
     let newUsername = body.username ? body.username : user.username;
-    let newUserProfile = body.ProfileUrl ? body.ProfileUrl : user.ProfileUrl;
+    let newUserProfile = body.profileURL ? body.profileURL : user.profileURL;
     let newEmail = body.email ? body.email : user.email;
     let newPassword = body.password ? body.password : user.password;
-    let newScore = body.score ? body.score : user.score;
+    let newLocation = body.location ? {
+      lat: body.location.lat || user.location.lat,
+      lon: body.location.lon || user.location.lon
+    } : user.location;
+
+    // Verifique se latitude e longitude são strings
+  if (typeof newLocation.lat !== 'string' || typeof newLocation.lon !== 'string') {
+    throw new Error('Latitude e Longitude devem ser strings.');
+  }
 
     const edit = {
       username: newUsername,
-      ProfileUrl: newUserProfile,
+      profileURL: newUserProfile,
       email: newEmail,
       password: newPassword,
-      score: newScore
+      location: newLocation
     };
     user = await UserModel.findByIdAndUpdate(id, edit, { new: true });
     return user;
@@ -132,15 +148,26 @@ class User {
   }
 
   cleanUp() {
-    for (const key in this.body)
-      if (typeof this.body[key] !== 'string') this.body[key] = '';
-
-    this.body = {
-      username: this.body.username,
-      email: this.body.email,
-      password: this.body.password
-    };
+  for (const key in this.body) {
+    if (key !== 'location') {
+      if (typeof this.body[key] !== 'string') {
+        this.body[key] = '';
+      }
+    }
   }
+
+  if (this.body.location && typeof this.body.location === 'object') {
+    this.body.location.lat = this.body.location.lat ? String(this.body.location.lat) : undefined;
+    this.body.location.lon = this.body.location.lon ? String(this.body.location.lon) : undefined;
+  }
+
+  this.body = {
+    username: this.body.username,
+    email: this.body.email,
+    password: this.body.password,
+    location: this.body.location 
+  };
+}
 }
 
 module.exports = User;
