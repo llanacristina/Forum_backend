@@ -5,12 +5,14 @@ const jwt = require('jsonwebtoken');
 
 const User = require(path.resolve(__dirname, '..', 'models', 'userModel'));
 
+const {PostModel} = require(path.resolve(__dirname, '..', 'models', 'postModel')); // Importando o modelo de Post
+
 const secretKey = process.env.SECRET_KEY;
 
 
 const create = async (req, res) => {
   try {
-    //console.log('Request Body:', req.body); // Adicione este log
+    //console.log('Request Body:', req.body); 
     const user = new User(req.body);
 
     await user.register();
@@ -83,13 +85,50 @@ const readById = async (req, res) => {
 };
 
 const update = async (req, res) => {
-  const user = await User.update(req.params.id, req.body);
-  return res.status(200).send(user);
+  try {
+    const { id } = req.params; 
+    const { username } = req.body; 
+
+    const user = await User.update(id, { name: username }); 
+    
+    const posts = await PostModel.find({ 'user.userID': id });
+    console.log(`Total de posts encontrados para o usuário ${username}: ${posts.length}`);
+
+    const result = await PostModel.updateMany(
+      { 'user.userID': id },
+      { $set: { 'user.name': username } } 
+    );
+
+    console.log(`Total de posts atualizados para o usuário ${username}: ${result.modifiedCount}`);
+
+    return res.status(200).send(user);
+  } catch (error) {
+    console.error('Erro ao atualizar o usuário e os posts:', error);
+    return res.status(500).send('Erro ao atualizar o usuário e os posts.');
+  }
 };
 
 const ChangeProfile = async (req, res) => {
-  console.log('Recebi uma imagem!');
-  return res.status(200).send("Alguma coisa chegou!");
+  try {
+    if (!req.file) {
+      return res.status(400).send('Nenhuma imagem foi enviada.');
+    }
+
+    const userId = req.params.id;
+    const fileName = req.file.filename;
+
+    const newProfileURL = `/custom-pfp/${fileName}`;
+    const updatedUser = await User.update(userId, { profileURL: newProfileURL });
+
+    return res.status(200).json({
+      message: 'Foto de perfil atualizada com sucesso!',
+      profileURL: newProfileURL,
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar a foto de perfil:', error);
+    return res.status(500).send('Erro ao atualizar a foto de perfil.');
+  }
 };
 
 const SendProfile = async (req, res) => {

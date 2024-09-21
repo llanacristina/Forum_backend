@@ -3,10 +3,16 @@ const path = require('path');
 const Comment = require(path.resolve(__dirname, '..', 'models', 'commentModel'));
 
 const create = async (req, res) => {
-  console.log(req.body);
-  let p = await new Comment(req.body);
-  return res.status(200).send("Comment Criado com sucesso!");
-};
+  try {
+    let comment = new Comment(req.body);
+    await comment.create();  
+    return res.status(201).json(comment);  
+  } catch (error) {
+    console.error('Erro ao criar comentário:', error);
+    return res.status(400).json({ error: 'Erro ao criar comentário' });
+    
+  }
+ };
 
 const readAll = async (req, res) => {
   let comments = await Comment.readAll();

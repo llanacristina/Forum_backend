@@ -1,6 +1,6 @@
 const path = require('path');
 
-const Post = require(path.resolve(__dirname, '..', 'models', 'postModel'));
+const {Post} = require(path.resolve(__dirname, '..', 'models', 'postModel'));
 
 const create = async (req, res) => {
   console.log(req.body);

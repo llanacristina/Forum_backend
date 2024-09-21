@@ -1,5 +1,5 @@
 const { response } = require('express');
-const Post = require('../models/postModel');
+const {Post} = require('../models/postModel');
 
 exports.filterPosts = async (req, res) => {
     const { text } = req.params;
